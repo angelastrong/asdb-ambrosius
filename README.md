@@ -1,0 +1,3 @@
+# Ambrosius 
+
+**Ambrosius** is a custom Discord scheduling bot built for the Goblin City Writers discord server. It stores a list of daily questions in a MongoDB database and posts one of them once daily (or more, which can be done with cron-style scheduling) using a configured template for that channel. It prioritizes previously unposted messages and can implement a set interval before a message is repeated. It also supports simple scheduling by day.
