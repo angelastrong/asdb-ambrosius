@@ -1,3 +1,5 @@
+const createConfig = require('../../utils/create-config')
+
 module.exports = async (argument, client, handler) => {
     const configCreated = await createConfig(argument.id)
     if (configCreated) {

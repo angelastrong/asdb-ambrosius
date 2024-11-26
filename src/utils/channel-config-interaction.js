@@ -1,10 +1,9 @@
-const { StringSelectMenuBuilder, StringSelectMenuOptionBuilder, ActionRowBuilder, ButtonBuilder,
-    ButtonStyle, EmbedBuilder} 
-    = require('discord.js');
+const { ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder} = require('discord.js');
 const channelConfigured = require('../utils/channel-configured');
 const config = require('../models/config')
 const ChannelConfig = config.ChannelConfig
 const actions = require('../constants/actions')
+const constants = require('../constants/default')
 
     /**
      * @param {ChannelConfig} channelConfig
@@ -13,13 +12,21 @@ const actions = require('../constants/actions')
 function channelConfigInteraction(channelConfig) {
     const channelId = channelConfig.channelId;
 
+    let schedule;
+    if (channelConfig.cron) {
+        schedule = `Cron: \`${channelConfig.cron}\``;
+    } else if (channelConfig.dailyPostTime) {
+        schedule = `Daily Post Time: \`${channelConfig.dailyPostTime}\``;
+    }
+        
     let channelConfigEmbed = new EmbedBuilder()
         .setTitle(`Configuration for <#${channelId}>`)
         .addFields(
-            { name: 'Daily Post Time', value: (channelConfig.dailyPostTime !== null) ? `${channelConfig.dailyPostTime}` : 'not configured'},
+            { name: 'Schedule', value: (schedule !== null) ? `${schedule}` : 'not configured'},
             { name: 'Message Template', value: channelConfig.template ? `${channelConfig.template}` : 'not configured'},
             { name: 'Repeat Post Min Time Interval', value: channelConfig.postIntervalDays ? `${channelConfig.postIntervalDays} days` : 'not configured'},
             { name: 'Pin Post', value: channelConfig.pinPost ? 'TRUE: Message will be pinned after posting' : 'FALSE: Message will not be pinned after posting.'},
+            { name: 'Max Number of Pinned Posts', value: `${channelConfig.pinnedPostsNumMax || constants.MAX_PINNED_POSTS}` },
             { name: 'Scheduler', value: channelConfig.active ? 'ENABLED' : 'DISABLED'},
             { name: 'Instruction', value: 'Use buttons below to edit settings.'}
         )
@@ -30,10 +37,10 @@ function channelConfigInteraction(channelConfig) {
         )
     }
 
-    //Menu Buttons
+    //Menu Buttons Row 1
     const dailyPostTimeButton = new ButtonBuilder()
-        .setCustomId(`config.${channelId}.${actions.DAILY_POST_TIME}`)
-        .setLabel('Daily Post Time')
+        .setCustomId(`config.${channelId}.${actions.SCHEDULE}`)
+        .setLabel('Schedule')
         .setStyle(ButtonStyle.Primary);
     
     const templateButton = new ButtonBuilder()
@@ -46,9 +53,16 @@ function channelConfigInteraction(channelConfig) {
         .setLabel('Repeat Post Min Time Interval')
         .setStyle(ButtonStyle.Primary);
 
+    //Menu Buttons Row 2
+
     const pinMessageButton = new ButtonBuilder()
         .setCustomId(`config.${channelId}.${actions.PIN_POST}.${channelConfig.pinPost ? 'false' : 'true'}`)
         .setLabel(`Pin Post Set ${channelConfig.pinPost ? 'False' : 'True'}`)
+        .setStyle(ButtonStyle.Primary);
+
+    const pinMaxNumButton = new ButtonBuilder()
+        .setCustomId(`config.${channelId}.${actions.PIN_MAX_NUM}`)
+        .setLabel('Max Number Pinned Posts')
         .setStyle(ButtonStyle.Primary);
 
     // Enable and Cancel
@@ -70,15 +84,18 @@ function channelConfigInteraction(channelConfig) {
         .setLabel('Exit')
         .setStyle(ButtonStyle.Secondary);
 
-    const menuRow = new ActionRowBuilder()
-        .addComponents(dailyPostTimeButton, templateButton, postIntervalButton, pinMessageButton);
+    const menuRow1 = new ActionRowBuilder()
+        .addComponents(dailyPostTimeButton, templateButton, postIntervalButton);
+
+    const menuRow2 = new ActionRowBuilder()
+        .addComponents(pinMessageButton, pinMaxNumButton);
 
     const statusRow = new ActionRowBuilder()
         .addComponents(changeStatusButton, exitButton);
 
     return {
         embeds: [channelConfigEmbed],
-        components: [menuRow, statusRow]
+        components: [menuRow1, menuRow2, statusRow]
     }
 }
 

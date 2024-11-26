@@ -1,15 +1,17 @@
-const { Interaction, EmbedBuilder, ActionRowBuilder, StringSelectMenuBuilder, StringSelectMenuOptionBuilder,
-    ModalBuilder, TextInputBuilder, TextInputStyle
+const { Interaction, EmbedBuilder, ActionRowBuilder, ModalBuilder, TextInputBuilder, TextInputStyle
  } = require('discord.js')
 const { ChannelConfig } = require('../../models/config')
 const actions = require('../../constants/actions')
 const channelConfigInteraction = require('../../utils/channel-config-interaction');
+const cron = require('cron-validate');
+const startSchedule = require('../../utils/start-schedule')
+const stopSchedule = require('../../utils/stop-schedule')
 
 /**
  * 
  * @param {Interaction} interaction 
  */
-module.exports = async (interaction) => {
+module.exports = async (interaction, client, handler) => {
     if (!interaction.customId) return;
 
     try {
@@ -29,7 +31,10 @@ module.exports = async (interaction) => {
                 embeds: [embedUpdate],
                 components: []
             });
-            interaction.reply('You have exited channel configuration');
+            interaction.reply({
+                content: 'You have exited channel configuration',
+                ephemeral: true
+            });
             channelConfig.configureMessageId = null;
             await channelConfig.save();
             return;
@@ -39,70 +44,113 @@ module.exports = async (interaction) => {
             channelConfig.pinPost = subaction === 'true';   
         }
 
-        // if (action === actions.DAILY_POST_TIME) {
-        //     if (subaction === 'input') {
-        //         const hourSelected = interaction.values[0];
-        //         channelConfig.dailyPostTime = hourSelected;
-        //         await interaction.message.edit({
-        //             content: `${hourSelected} selected for Daily Post Time`,
-        //             components: []
-        //         })
-        //     } else {
-        //         var hourOptions = [];
-
-        //         for (let i = 0; i <= 23; i++) {
-        //             hourOptions.push(new StringSelectMenuOptionBuilder().setLabel(i.toString()).setValue(i.toString()));
-        //         }
-            
-        //         const hourSelect = new StringSelectMenuBuilder()
-        //             .setCustomId(`config.${channelId}.${actions.DAILY_POST_TIME}.input`)
-        //             .setPlaceholder('Select hour for schedule')
-        //             .addOptions(hourOptions)
-            
-        //         const row = new ActionRowBuilder()
-        //             .addComponents(hourSelect);
-
-        //         await interaction.reply({
-        //             content: 'Select the hour in PT as the daily posting time for this channel',
-        //             components: [row]
-        //         })
-        //         return;
-        //     }
-            
-        // }
-
-        if (action === actions.DAILY_POST_TIME) {
+        if (action === actions.PIN_MAX_NUM) {
             if (subaction === 'input') {
-                const timeString = interaction.fields.getTextInputValue('hourInput');
-                let regex = new RegExp(/^(?:\d|[01]\d|2[0-3]):[0-5]\d$/);
-
-                if (regex.test(timeString)) {
-                    const time = timeString.split(':');
-                    channelConfig.dailyPostHour = time[0];
-                    channelConfig.dailyPostMinute = time[1];
-                    channelConfig.dailyPostTime = timeString;
-                } else {
+                const pinMaxNum = interaction.fields.getTextInputValue('pinMaxNumInput');
+                if (isNaN(pinMaxNum)) {
                     interaction.reply({ 
-                        content: 'Invalid time format >:[',
+                        content: 'You did not input a number >:[',
                         ephemeral: true
                     })
                     return;
-                }   
+                }
+                if (pinMaxNum < 1 || pinMaxNum > 50) {
+                    interaction.reply({ 
+                        content: 'Number must be between 1 and 50 inclusive!! >:[',
+                        ephemeral: true
+                    })
+                    return;
+                }
+                channelConfig.pinnedPostsNumMax = pinMaxNum;
             } else {
                 const modal = new ModalBuilder()
-                    .setCustomId(`config.${channelId}.${actions.DAILY_POST_TIME}.input`)
-                    .setTitle('Edit daily post time');
+                    .setCustomId(`config.${channelId}.${actions.PIN_MAX_NUM}.input`)
+                    .setTitle('Edit max number of pinned posts');
 
-                const hourInput = new TextInputBuilder()
-                    .setCustomId('hourInput')
-                    .setLabel('Set the daily post time in PT')
-                    .setPlaceholder('Use the 24-hour format (0-23 for hour) eg. 18:15')
+                const postIntervalInput = new TextInputBuilder()
+                    .setCustomId('pinMaxNumInput')
+                    .setLabel('Number must be between 1 and 50 inclusive')
+                    //.setPlaceholder('Enter the number of days')
                     .setStyle(TextInputStyle.Short)
                     .setRequired(true);
                 
-                const row = new ActionRowBuilder().addComponents(hourInput);
+                const row = new ActionRowBuilder().addComponents(postIntervalInput);
 
                 modal.addComponents(row);
+
+                await interaction.showModal(modal);
+                return;
+            }
+        }
+
+        if (action === actions.SCHEDULE) {
+            if (subaction === 'input') {
+                const timeString = interaction.fields.getTextInputValue('timeInput');
+                const cronString = interaction.fields.getTextInputValue('cronInput');
+
+                if (cronString) {
+                    const cronResult = cron(cronString);
+                    if (cronResult.isValid()) {
+                        channelConfig.cron = cronString;
+                    } else {
+                        interaction.reply({ 
+                            content: 'Invalid cron format >:[',
+                            ephemeral: true
+                        })
+                        return;
+                    }
+                } else if (channelConfig.cron) {
+                    channelConfig.cron = null;
+                }
+                if (timeString) {
+                    const regex = new RegExp(/^(?:\d|[01]\d|2[0-3]):[0-5]\d$/);
+
+                    if (regex.test(timeString)) {
+                        const time = timeString.split(':');
+                        channelConfig.dailyPostHour = time[0];
+                        channelConfig.dailyPostMinute = time[1];
+                        channelConfig.dailyPostTime = timeString;
+                    } else {
+                        interaction.reply({ 
+                            content: 'Invalid time format >:[',
+                            ephemeral: true
+                        })
+                        return;
+                    }   
+                } else if (channelConfig.dailyPostTime) {
+                    channelConfig.dailyPostHour = null;
+                    channelConfig.dailyPostMinute = null;
+                    channelConfig.dailyPostTime = null;
+                }
+
+                if (channelConfig.active) {
+                    stopSchedule(channelConfig);
+                    await startSchedule(client, channelConfig);
+                }
+                
+            } else {
+                const modal = new ModalBuilder()
+                    .setCustomId(`config.${channelId}.${actions.SCHEDULE}.input`)
+                    .setTitle('Edit the schedule');
+
+                const timeInput = new TextInputBuilder()
+                    .setCustomId('timeInput')
+                    .setLabel('Set the daily post time in UTC')
+                    .setPlaceholder('Use the 24-hour format (0-23 for hour) eg. 18:15')
+                    .setStyle(TextInputStyle.Short)
+                    .setRequired(false);
+
+                const cronInput = new TextInputBuilder()
+                    .setCustomId('cronInput')
+                    .setLabel('Or use cron-style scheduling')
+                    .setPlaceholder('For example: Every 15 minutes = */15 * * * * ')
+                    .setStyle(TextInputStyle.Short)
+                    .setRequired(false);
+                
+                const row1 = new ActionRowBuilder().addComponents(timeInput);
+                const row2 = new ActionRowBuilder().addComponents(cronInput);
+
+                modal.addComponents(row1, row2);
 
                 await interaction.showModal(modal);
                 return;
@@ -113,6 +161,13 @@ module.exports = async (interaction) => {
         if (action === actions.TEMPLATE) {
             if (subaction === 'input') {
                 const template = interaction.fields.getTextInputValue('templateInput');
+                if (!template.includes('<MSG>')) {
+                    interaction.reply({ 
+                        content: 'The template needs to contain <MSG> >:[',
+                        ephemeral: true
+                    })
+                    return;
+                }
                 channelConfig.template = template;
             } else {
                 const modal = new ModalBuilder()
@@ -170,10 +225,12 @@ module.exports = async (interaction) => {
         }
 
         if (action === actions.ENABLE) {
+            await startSchedule(client, channelConfig);
             channelConfig.active = true;
         }
 
         if (action === actions.DISABLE) {
+            stopSchedule(channelConfig);
             channelConfig.active = false;
         }
 

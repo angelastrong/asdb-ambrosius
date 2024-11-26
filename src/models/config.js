@@ -5,12 +5,15 @@ const ChannelConfig = new Schema({
     channelId: String,
     active: Boolean,
     template: String,
+    cron: String,
     dailyPostTime: String,
     dailyPostHour: Number,
     dailyPostMinute: Number,
     postIntervalDays: Number,
     pinPost: Boolean,
-    configureMessageId: String
+    configureMessageId: String,
+    pinnedPostsNumMax: Number,
+    pinnedPosts: [String]
 })
 
 const ServerConfig = new Schema({

@@ -1,5 +1,5 @@
 require('dotenv').config();
-const { Client, IntentsBitField, REST, Routes } = require('discord.js');
+const { Client, IntentsBitField } = require('discord.js');
 const { CommandHandler } = require('djs-commander');
 const mongoose = require('mongoose');
 const path = require('path');
@@ -17,7 +17,7 @@ new CommandHandler({
   commandsPath: path.join(__dirname, 'commands'), // The commands directory
   eventsPath: path.join(__dirname, 'events'), // The events directory
   validationsPath: path.join(__dirname, 'validations'), // Only works if commandsPath is provided
-  testServer: '1167990465136697344', // To register guild-based commands (if it's not provided commands will be registered globally)
+  //testServer: '1167990465136697344', // To register guild-based commands (if it's not provided commands will be registered globally)
 });
 
 (async () => {

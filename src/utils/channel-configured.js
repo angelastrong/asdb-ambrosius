@@ -1,6 +1,6 @@
 function channelConfigured(channel) {
     return channel.template 
-        && channel.dailyPostTime 
+        && (channel.dailyPostTime || channel.cron)
         && channel.postIntervalDays
 }
 
