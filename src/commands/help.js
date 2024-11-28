@@ -63,7 +63,7 @@ Message
     Message content. /add-message will check for duplicates but /edit-message will not.
             
 Scheduled_Date
-    Use the format MM-DD-YYYY. Currently uses UTC.
+    Use the format MM-DD-YYYY. Currently uses UTC. Only supported for once daily posts.
             
 Recurring
     If TRUE, after message is posted, will be scheduled again for next year on the same day. If FALSE, will not be posted again. (DO NOT schedule anything recurring on 2/29 plz)

@@ -8,6 +8,7 @@ const constants = require('../constants/default')
 async function postMessage(guildId, channelId, client) {
     const channelConfig = await ChannelConfig.findOne({ guildId: guildId, channelId: channelId }).exec()
     if (channelConfig.length || !channelConfigured(channelConfig)) {
+        console.log(`Channel ${channelId} not configured`)
         return -1;
     } else {
         try {
@@ -20,7 +21,7 @@ async function postMessage(guildId, channelId, client) {
                     guildId: guildId,
                     channelId: channelId,
                     scheduledDate: todayString,
-                    deleted: false
+                    deleted: {$in: [null, false]}
                 });
             
             //or get random message that hasn't been posted yet
@@ -32,7 +33,7 @@ async function postMessage(guildId, channelId, client) {
                             channelId: channelId,
                             lastPostedDate: null,
                             scheduledDate: null,
-                            deleted: false
+                            deleted: {$in: [null, false]}
                         }},
                         {$sample: {size: 1}}
                     ])
@@ -47,7 +48,7 @@ async function postMessage(guildId, channelId, client) {
                                 channelId: channelId,
                                 lastPostedDate: {$not: {$gt: minLastPosted}},
                                 scheduledDate: null,
-                                deleted: false
+                                deleted: {$in: [null, false]}
                             }},
                             {$sample: {size: 1}}
                         ]);
@@ -55,6 +56,7 @@ async function postMessage(guildId, channelId, client) {
                 if (randomMessage.length) {
                     messageToPost = randomMessage[0];
                 } else {
+                    console.log(`No messages to post for ${channelId}`);
                     return -1;
                 }
             }
