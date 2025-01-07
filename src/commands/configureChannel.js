@@ -2,7 +2,6 @@ const { SlashCommandBuilder, ChannelType, ChatInputCommandInteraction,}
     = require('discord.js');
 const config = require('../models/config');
 const channelConfigInteraction = require('../utils/channel-config-interaction');
-
 const ChannelConfig = config.ChannelConfig
 
 module.exports = {

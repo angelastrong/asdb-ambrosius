@@ -26,28 +26,38 @@ module.exports = {
 
     if (subcommand === 'commands') {
         content = `
-            \`\`\`Ambrosius commands (v1.1.0)
+            \`\`\`Ambrosius commands (v1.3.0)
 
-/configure-channel (channel)
-    Use this to set up the schedule and other configurations for a channel. This is also where you would enable/disable the schedule.
+/add-message here (channel)* (message)* (schedule-date)
+    Ad-hoc way to add a single message to a channel's message queue.
 
-/add-message here (channel)
-    Ad-hoc way to add a single message to a channel's message queue
-
-/add-message file (channel) (file)
+/add-message file (channel)* (file)*
     Add messages via a csv file. Duplicate messages will not be added, and instead will just update the Last_Posted if applicable.
     Supported headers: Message, Last_Posted, Scheduled_Date, Recurring (use \'/help headers\' for more details)
 
-/post (channel)
-    Post the next message in the channel. If channel option not provided, will use the channel the command is used in.
+/configure-channel (channel)*
+    Use this to set up the schedule and other configurations for a channel. This is also where you would enable/disable the schedule.
 
-/edit-message export (channel)
+/edit-message export (channel)*
     Will export all messages for specified channel from the database.
     Headers: Id, Message, Scheduled_Date, Recurring, Deleted, Last_Posted (use \'/help headers\' for more details)
 
-/edit-message import (channel) (file)
+/edit-message import (channel)* (file)*
     Will update the messages by id in the file. Recommended to only include messages to update instead of just re-importing the full export. Include the full row or else any empty values will overwrite the value in the database.
     Supported headers: Id, Message, Scheduled_Date, Recurring, Deleted (use \'/help headers\' for more details)
+
+/edit-message id (id)* (message) (schedule-date)
+    Edit message and/or schedule date by id. Use /get-message-id to get id by message content.
+
+/edit-message recent-pinned (channel)* (message)*
+    Updates most recently pinned post with edited message and also updates the message in the database.
+    Most recently pinned message must also be the most recently posted message.
+
+/get-message-id (channel)* (message)*
+    Get message id by channel and message content. Only include the message, not any of the template.
+
+/post (channel)
+    Post the next message in the channel. If channel option not provided, will use the channel the command is used in.
 \`\`\`
 `
     }

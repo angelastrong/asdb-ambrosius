@@ -72,14 +72,9 @@ async function postMessage(guildId, channelId, client) {
                 }
                 channelConfig.pinnedPosts.push(message.id);
 
-                //console.log(channelConfig.pinnedPosts.length);
-                //console.log(channelConfig.pinnedPostsNumMax);
-
                 while (channelConfig.pinnedPosts.length > (channelConfig.pinnedPostsNumMax || constants.MAX_PINNED_POSTS)) {
                     const unpinPostId = channelConfig.pinnedPosts.shift();
                     const unpinPost = await channel.messages.fetch(unpinPostId);
-                    //console.log(unpinPostId);
-                    //console.log(unpinPost);
                     try {
                         await unpinPost.unpin();
                     } catch (error) {
