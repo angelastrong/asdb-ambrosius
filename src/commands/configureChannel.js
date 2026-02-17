@@ -2,6 +2,7 @@ const { SlashCommandBuilder, ChannelType, ChatInputCommandInteraction,}
     = require('discord.js');
 const config = require('../models/config');
 const channelConfigInteraction = require('../utils/channel-config-interaction');
+const WriteinConfig = require('../models/writein-config');
 const ChannelConfig = config.ChannelConfig
 
 module.exports = {
@@ -34,7 +35,8 @@ module.exports = {
         channelConfig = await channelConfig.save();
     }
 
-    await interaction.reply(channelConfigInteraction(channelConfig));
+    const writeinConfigs = await WriteinConfig.find({ channelConfigId: channelConfig._id });
+    await interaction.reply(channelConfigInteraction(channelConfig, null, writeinConfigs));
     const menuResponse = await interaction.fetchReply();
 
     channelConfig.configureMessageId = menuResponse.id;

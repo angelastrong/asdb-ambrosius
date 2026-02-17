@@ -1,7 +1,7 @@
 const Message = require('../models/message')
 const config = require('../models/config')
 const ChannelConfig = config.ChannelConfig
-const channelConfigured = require('../utils/channel-configured')
+const { channelConfigured } = require('../utils/channel-configured')
 const formatScheduleDate = require('../utils/format-schedule-date')
 const constants = require('../constants/default')
 
