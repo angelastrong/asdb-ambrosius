@@ -87,8 +87,11 @@ async function postReminder(writeinConfigId, reminderType, client) {
             );
         }
 
-        // Second reminder: clear interested users and message ID from first reminder
-        if (reminderType === 'second') {
+        // Clear interested users and message ID from first reminder after the last reminder
+        const hasThirdReminder = !!(channelConfig.thirdReminderTemplate
+            && (writeinConfig.thirdReminderTime || channelConfig.thirdReminderTime));
+        const isLastReminder = reminderType === 'third' || (reminderType === 'second' && !hasThirdReminder);
+        if (isLastReminder) {
             await Reminder.findOneAndUpdate(
                 { writeinConfigId: writeinConfig._id, reminderType: 'first' },
                 { messageId: null, interestedUsers: [] }

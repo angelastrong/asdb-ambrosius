@@ -367,7 +367,7 @@ module.exports = async (interaction, client, handler) => {
                 const timezoneInput = new TextInputBuilder()
                     .setCustomId('writeinTimezoneInput')
                     .setLabel('Set the timezone')
-                    .setPlaceholder('e.g., America/New_York, UTC, Europe/London')
+                    .setPlaceholder('e.g., America/New_York, Europe/London')
                     .setStyle(TextInputStyle.Short)
                     .setRequired(true);
                 const row = new ActionRowBuilder().addComponents(timezoneInput);

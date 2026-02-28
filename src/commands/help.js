@@ -17,6 +17,11 @@ module.exports = {
             subcommand
                 .setName('headers')
                 .setDescription('Get more details about supported headers')
+          )
+          .addSubcommand(subcommand => 
+            subcommand
+                .setName('timezone')
+                .setDescription('Get a link for available timezones')
           ),
           
   run: async ({ interaction, client, handler }) => {
@@ -26,7 +31,7 @@ module.exports = {
 
     if (subcommand === 'commands') {
         content = `
-            \`\`\`Ambrosius commands (v1.3.0)
+            \`\`\`Ambrosius commands (v2.0.0)
 
 /add-message here (channel)* (message)* (schedule-date)
     Ad-hoc way to add a single message to a channel's message queue.
@@ -36,7 +41,7 @@ module.exports = {
     Supported headers: Message, Last_Posted, Scheduled_Date, Recurring (use \'/help headers\' for more details)
 
 /configure-channel (channel)*
-    Use this to set up the schedule and other configurations for a channel. This is also where you would enable/disable the schedule.
+    Use this to set up both Daily Message and Write-in reminder schedules and other configurations for a channel. This is also where you would enable/disable the schedule.
 
 /edit-message export (channel)*
     Will export all messages for specified channel from the database.
@@ -64,7 +69,7 @@ module.exports = {
 
     if (subcommand === 'headers') {
         content = `
-            \`\`\`Ambrosius supported headers (v1.1.0)
+            \`\`\`Ambrosius supported headers (v2.0.0)
 
 Id
     Id of the message in the database.
@@ -85,6 +90,10 @@ Deleted
     Marks message as deleted and will not be posted again. Eventually there will be a job that will clean out deleted messages.
 \`\`\`
 `
+    }
+
+    if (subcommand === 'timezone') {
+        content = "See https://en.wikipedia.org/wiki/List_of_tz_database_time_zones"
     }
     
 
