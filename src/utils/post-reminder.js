@@ -5,6 +5,50 @@ const { writeinConfigured, writeinChannelConfigured } = require('./channel-confi
 const { toDiscordTimestamp, FORMATS } = require('./disclock')
 const atDiscordUser = require('./at-discord-user')
 
+function getNextWriteinDate(writeinDay, writeinTime, writeinTimezone) {
+    if (!writeinDay || !writeinTime || !writeinTimezone) return null;
+
+    const [targetHour, targetMinute] = writeinTime.split(':').map(Number);
+
+    for (let daysAhead = 0; daysAhead <= 7; daysAhead++) {
+        const probe = new Date(Date.now() + daysAhead * 24 * 60 * 60 * 1000);
+        const localWeekday = new Intl.DateTimeFormat('en-US', {
+            timeZone: writeinTimezone,
+            weekday: 'long'
+        }).format(probe);
+
+        if (localWeekday !== writeinDay) continue;
+
+        // Get the calendar date in the target timezone
+        const localDate = new Intl.DateTimeFormat('en-CA', {
+            timeZone: writeinTimezone,
+            year: 'numeric', month: '2-digit', day: '2-digit'
+        }).format(probe);
+        const [year, month, day] = localDate.split('-').map(Number);
+
+        // Naive UTC: treat the target local time as if it were UTC
+        const naiveUTC = Date.UTC(year, month - 1, day, targetHour, targetMinute, 0);
+
+        // Find what hour:minute naiveUTC actually is in the target timezone
+        const parts = new Intl.DateTimeFormat('en-US', {
+            timeZone: writeinTimezone,
+            hour: 'numeric', minute: 'numeric', hour12: false
+        }).formatToParts(new Date(naiveUTC));
+        const partMap = Object.fromEntries(parts.map(p => [p.type, p.value]));
+
+        // Compute the difference and correct naiveUTC to get true UTC
+        const actualMins = (parseInt(partMap.hour) % 24) * 60 + parseInt(partMap.minute);
+        const expectedMins = targetHour * 60 + targetMinute;
+        let offsetMins = actualMins - expectedMins;
+        if (offsetMins > 720) offsetMins -= 1440;
+        if (offsetMins < -720) offsetMins += 1440;
+
+        return new Date(naiveUTC - offsetMins * 60 * 1000);
+    }
+
+    return null;
+}
+
 async function postReminder(writeinConfigId, reminderType, client) {
     const writeinConfig = await WriteinConfig.findById(writeinConfigId).exec()
     if (!writeinConfig || !writeinConfigured(writeinConfig)) {
@@ -45,8 +89,8 @@ async function postReminder(writeinConfigId, reminderType, client) {
             second: writeinConfig.secondReminderTime || channelConfig.secondReminderTime,
             third: writeinConfig.thirdReminderTime || channelConfig.thirdReminderTime,
         };
-        const reminderMinutes = Number(timeMap[reminderType]);
-        const writeinDate = new Date(Date.now() + reminderMinutes * 60 * 1000);
+        const writeinDate = getNextWriteinDate(writeinConfig.writeinDay, writeinConfig.writeinTime, writeinConfig.writeinTimezone)
+            || new Date(Date.now() + Number(timeMap[reminderType]) * 60 * 1000);
         const discordTime = toDiscordTimestamp(writeinDate, FORMATS.SHORT_TIME);
 
         // Custom text from writeinConfig
