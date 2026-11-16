@@ -7,7 +7,8 @@ const csv = converter.json2csv;
 const json = converter.csv2json;
 const scheduledMessageExists = require('../utils/scheduled-message-exists');
 const formatScheduleDate = require('../utils/format-schedule-date');
-const { ObjectId } = require('mongodb');
+const config = require('../models/config');
+const ChannelConfig = config.ChannelConfig
 
 module.exports = {
     /**
@@ -45,20 +46,60 @@ module.exports = {
                         .setName('file')
                         .setDescription('The csv file with messages to edit')
                         .setRequired(true))
+          )
+          .addSubcommand(subcommand =>
+            subcommand
+                .setName('id')
+                .setDescription('Edit message by id')
+                .addStringOption(option => 
+                    option
+                        .setName('id')
+                        .setDescription('The id of the message')
+                        .setRequired(true)
+                )
+                .addStringOption(option => 
+                    option
+                        .setName('message')
+                        .setDescription('Edit message content')
+                )
+                .addStringOption(option => 
+                    option
+                        .setName('schedule-date')
+                        .setDescription('Edit schedule date in format YYYY-MM-DD')
+                ),
+          )
+          .addSubcommand(subcommand =>
+            subcommand
+                .setName('recent-pinned')
+                .setDescription('Edit most recently pinned message')
+                .addChannelOption(option => 
+                    option
+                        .setName('channel')
+                        .setDescription('The channel that has the most recent message that you want to edit')
+                        .addChannelTypes(ChannelType.GuildText)
+                        .setRequired(true)
+                )
+                .addStringOption(option =>
+                    option
+                        .setName('message')
+                        .setDescription('Message to be updated to')
+                        .setRequired(true)
+                )
           ),
           
           
   run: async ({ interaction, client, handler }) => {
     const { options } = interaction;
-    const channel = interaction.options.getChannel('channel');
     const subcommand = options.getSubcommand();
+    const channel = options.getChannel('channel');
+    const messageString = options.getString('message');
     await interaction.deferReply({
+        ephemeral: true,
         fetchReply: true
     });
 
     try {
         if (subcommand === 'export') {
-            
             const cursor = MessageSchema.find({
                     guildId: interaction.guildId,
                     channelId: channel.id
@@ -159,7 +200,90 @@ module.exports = {
                         console.log(`Error: ${error}`);
                     }
                 })
+        } else if (subcommand === 'id') {
+            const messageId = options.getString('id');
+            const messageObject = await MessageSchema.findOne(
+                { _id: messageId }
+            )
+
+            if (!messageObject) {
+                await interaction.editReply({
+                    content: 'Message id does not exist :(',
+                    ephemeral: true
+                })
+                return;
+            }
+
+            if (messageString) {
+                await MessageSchema.updateOne(
+                    { _id: messageId },
+                    { message: messageString }
+                )
+            }
+
+            const scheduledDateString = options.getString('schedule-date');
+
+            if (scheduledDateString) {
+                const scheduleDate = Date.parse(scheduledDateString);
+
+                if (isNaN(scheduleDate)) {
+                    await interaction.editReply({
+                        content:'Schedule date is not a valid date format',
+                        ephemeral: true
+                    });
+                } else {
+                    if (await scheduledMessageExists(interaction.guildId, messageObject.channelId, scheduledDateString, messageId)) {
+                        await interaction.editReply({
+                            content: 'Schedule date already exists in channel',
+                            ephemeral: true
+                        })
+                        return;
+                    }
+
+                    await MessageSchema.updateOne(
+                        { _id: messageId },
+                        { scheduledDate: scheduledDateString }
+                    )
+                }
+            } 
             
+            await interaction.editReply({
+                ephemeral: true,
+                content: 'Message updated!'
+            });
+        } else if (subcommand === 'recent-pinned') {
+            const recentMessage = await MessageSchema.findOne(
+                { channelId: channel.id }
+            ).sort({ lastPostedDate: -1 });
+            const channelConfig = await ChannelConfig.findOne(
+                { channelId: channel.id }
+            );
+
+            await MessageSchema.updateOne(
+                { _id: recentMessage._id },
+                { message: messageString }
+            )
+
+            const pinnedPosts = channelConfig.pinnedPosts;
+            if (!pinnedPosts || pinnedPosts.length < 1) {
+                await interaction.editReply({
+                    content: 'No pinned posts',
+                    ephemeral: true
+                });
+                return;
+            }
+
+            const channelToEdit = await client.channels.fetch(channel.id);
+            const recentPinnedId = pinnedPosts[pinnedPosts.length - 1];
+            const recentPinnedMessage = await channelToEdit.messages.fetch(recentPinnedId);
+            recentPinnedMessage.edit({
+                content: channelConfig.template.replace('<MSG>', messageString)
+            });
+
+            await interaction.editReply({
+                content: 'Updated database and recently pinned message!',
+                ephemeral: true
+            });
         } else {
             await interaction.editReply({
                 content: 'There was an error',
@@ -167,14 +291,12 @@ module.exports = {
             });
         }
     } catch (err) {
+        console.log(err);
         await interaction.editReply({
             content: 'There was an error',
             ephemeral: true
         });
     }
 
-
-
-    
   },
 };

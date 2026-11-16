@@ -63,14 +63,23 @@ module.exports = {
         } else {
             try {
                     const message = options.getString('message');
-                    MessageSchema.create({
-                        guildId: interaction.guildId,
-                        channel: channel.id,
-                        message: message,
-                        scheduledDate: scheduledDateString ? scheduledDateString : null
-                    })
+
+                    await MessageSchema.updateOne(
+                        {
+                            guildId: interaction.guildId,
+                            channelId: channel.id,
+                            message: message,
+                        },
+                        {
+                            guildId: interaction.guildId,
+                            channelId: channel.id,
+                            message: message,
+                            scheduledDate: scheduledDateString ? scheduledDateString : null
+                        },
+                        { upsert: true }
+                    )
                 await interaction.reply({
-                    content: 'Message has been added',
+                    content: 'Message has been added!',
                     ephemeral: true
                 });
             } catch (error) {
