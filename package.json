@@ -14,11 +14,11 @@
   "dependencies": {
     "cron-validate": "^1.4.5",
     "csvtojson": "^2.0.10",
-    "discord.js": "^14.14.1",
+    "discord.js": "^14.28.1",
     "djs-commander": "^0.0.50",
     "dotenv": "^16.4.1",
-    "json-2-csv": "^5.5.6",
-    "mongoose": ">=8.9.5",
+    "json-2-csv": "^5.6.0",
+    "mongoose": "^9.12.1",
     "node-emoji": "^2.2.0",
     "node-fetch": "^3.3.2",
     "node-schedule": "^2.1.1"
